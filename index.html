@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Reconnection Initiative</title>
+
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+<canvas id="matrix"></canvas>
+
+<div id="boot">
+    <div id="bootText"></div>
+</div>
+
+<div id="loginContainer">
+
+    <div class="loginBox">
+        <h1></h1>
+
+        <input id="email" placeholder="EMAIL">
+        <br>
+        <input id="password" type="password" placeholder="PASSWORD KEY">
+        <br>
+        <button id="loginBtn">AUTHENTICATE</button>
+
+        <p id="error"></p>
+    </div>
+
+</div>
+
+<div id="terminalContainer">
+
+    <div id="terminalOutput"></div>
+
+    <div class="inputRow">
+        <span class="prompt">hello@world.ca:~$</span>
+
+        <input id="commandInput" autocomplete="off" />
+
+        <button id="enterBtn">⏎</button>
+    </div>
+
+</div>
+
+<script type="module" src="app.js"></script>
+<script src="matrix.js"></script>
+
+</body>
+</html>

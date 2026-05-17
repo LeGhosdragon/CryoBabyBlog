@@ -1,0 +1,195 @@
+body {
+    margin: 0;
+    background: black;
+    color: #00ff9d;
+    font-family: monospace;
+    overflow: hidden;
+}
+
+#matrix {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 0;
+}
+
+#boot {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: black;
+    color: #00ff9d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    font-size: 14px;
+    letter-spacing: 2px;
+}
+
+#loginContainer {
+    position: relative;
+    z-index: 10;
+    display: none;
+    height: 100vh;
+    align-items: center;
+    justify-content: center;
+}
+
+.loginBox {
+    padding: 30px;
+    border: 1px solid #00ff9d;
+    box-shadow: 0 0 25px #00ff9d33;
+    background: rgba(0,0,0,0.7);
+}
+
+#terminalContainer {
+    position: relative;
+    z-index: 10;
+    display: none;
+    height: 100vh;
+    padding: 20px;
+}
+
+#terminalOutput {
+    height: 90%;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+
+input {
+    background: transparent;
+    border: 1px solid #00ff9d;
+    color: #00ff9d;
+    padding: 8px;
+    outline: none;
+}
+
+button {
+    margin-top: 10px;
+    background: transparent;
+    border: 1px solid #00ff9d;
+    color: #00ff9d;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #00ff9d;
+    color: black;
+}
+
+#matrix {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    transition: opacity 0.8s ease, filter 0.8s ease;
+    opacity: 1;
+}
+
+body.logged-in #matrix {
+    opacity: 0.3;
+    filter: blur(0.5px);
+}
+
+:root {
+    --bg: #000;
+    --matrix: #00ff9d;
+    --system: white;
+    --user: #36f800;
+    --warn: #ff4d4d;
+    --dim: #6a6a6a;
+    --display: rgb(206, 125, 244);
+    --message: #00d4ff;
+}
+
+#terminalOutput {
+    height: 90%;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    color: var(--system);
+    line-height: 1.4;
+}
+
+.prompt {
+    color: var(--system);
+    text-shadow: 0 0 8px var(--system);
+}
+
+.user-line {
+    color: var(--user);
+}
+
+.matrix-line {
+    color: var(--matrix);
+}
+
+.message-line {
+    color: var(--message);
+}
+
+.display-line {
+    color: var(--display);
+}
+
+.system-line {
+    color: var(--system);
+}
+
+.command {
+    color: var(--user);
+}
+
+.error-line {
+    color: var(--warn);
+    text-shadow: 0 0 8px var(--warn);
+}
+
+.root-label {
+    color: #ffffff;
+    text-shadow: 0 0 10px #00ff9d;
+}
+
+#terminalOutput div {
+    margin: 2px 0;
+}
+
+#terminalOutput div {
+    white-space: pre-wrap;
+}
+
+.inputRow {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.prompt {
+    margin-right: 8px;
+    color: lime;
+    font-family: monospace;
+}
+
+#commandInput {
+    flex: 1;
+    background: rgb(20, 35, 20);
+    border: none;
+    outline: none;
+    color: lime;
+    font-family: monospace;
+    padding: 8px;
+}
+
+#enterBtn {
+    width: 45px;
+    background: black;
+    border: none;
+    color: lime;
+    font-family: monospace;
+    cursor: pointer;
+    border-left: 1px solid #333;
+}
+
+#enterBtn:active {
+    background: #111;
+}
