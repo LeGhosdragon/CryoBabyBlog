@@ -12,10 +12,13 @@ body {
     touch-action: manipulation;
 }
 
+/* MATRIX BACKGROUND */
 #matrix {
     position: fixed;
     top: 0;
     left: 0;
+    width: 100%;
+    height: 100%;
     width: 100%;
     height: 100%;
     z-index: 0;
@@ -27,17 +30,30 @@ body {
 body.logged-in #matrix {
     opacity: 0.3;
     filter: blur(0.5px);
+
+    transition: opacity 0.8s ease, filter 0.8s ease;
+    opacity: 1;
 }
 
+body.logged-in #matrix {
+    opacity: 0.3;
+    filter: blur(0.5px);
+}
+
+/* BOOT SCREEN */
 #boot {
+    position: fixed;
+    inset: 0;
     position: fixed;
     inset: 0;
     background: black;
     color: #00ff9d;
 
+
     display: flex;
     align-items: center;
     justify-content: center;
+
 
     z-index: 5;
     font-size: 14px;
@@ -47,14 +63,23 @@ body.logged-in #matrix {
              env(safe-area-inset-right)
              env(safe-area-inset-bottom)
              env(safe-area-inset-left);
+
+    padding: env(safe-area-inset-top)
+             env(safe-area-inset-right)
+             env(safe-area-inset-bottom)
+             env(safe-area-inset-left);
 }
 
+/* LOGIN */
 #loginContainer {
     position: relative;
     z-index: 10;
     display: none;
 
+
     height: 100vh;
+    height: 100dvh;
+
     height: 100dvh;
 
     align-items: center;
@@ -68,23 +93,33 @@ body.logged-in #matrix {
     background: rgba(0,0,0,0.7);
 
     width: min(90%, 400px);
+
+    width: min(90%, 400px);
 }
 
+/* TERMINAL */
 #terminalContainer {
     position: relative;
     z-index: 10;
     display: none;
 
+
     height: 100vh;
     height: 100dvh;
 
+    height: 100dvh;
+
     padding: 20px;
+    box-sizing: border-box;
     box-sizing: border-box;
 }
 
 #terminalOutput {
     height: calc(100% - 60px);
+    height: calc(100% - 60px);
     overflow-y: auto;
+    overflow-x: hidden;
+
     overflow-x: hidden;
 
     white-space: pre-wrap;
@@ -130,6 +165,8 @@ body.logged-in #matrix {
     cursor: pointer;
 
     border-left: 1px solid #333;
+
+    border-left: 1px solid #333;
 }
 
 #enterBtn:active {
@@ -144,6 +181,7 @@ button {
     font-size: 16px;
 }
 
+/* VARIABLES */
 :root {
     --bg: #000;
     --matrix: #00ff9d;
@@ -161,6 +199,7 @@ button {
 .message-line { color: var(--message); }
 .display-line { color: var(--display); }
 
+.command { color: var(--user); }
 .command { color: var(--user); }
 
 .error-line {
