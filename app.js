@@ -482,13 +482,13 @@ function submitCommand() {
     runCommand(command);
 }
 
-terminalContainer.addEventListener("click", () => {
-    keepInputFocused();
-});
+// terminalContainer.addEventListener("click", () => {
+//     keepInputFocused();
+// });
 
-input.addEventListener("blur", () => {
-    setTimeout(() => input.focus(), 10);
-});
+// input.addEventListener("blur", () => {
+//     setTimeout(() => input.focus(), 10);
+// });
 
 async function handleTry(answer) {
 
@@ -645,3 +645,20 @@ function isAdmin() {
 }
 
 typeBoot();
+
+if ("serviceWorker" in navigator) {
+
+    window.addEventListener("load", () => {
+
+        navigator.serviceWorker
+            .register("./service-worker.js")
+            .then(() => {
+                console.log("Service worker registered");
+            })
+            .catch(err => {
+                console.log("SW failed:", err);
+            });
+
+    });
+
+}
