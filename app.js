@@ -574,7 +574,6 @@ async function handleSend(message) {
 }
 
 async function registerFCM() {
-
     try {
         const permission = await Notification.requestPermission();
 
@@ -587,12 +586,17 @@ async function registerFCM() {
             vapidKey: "BKrIMgSG5r0TDe6LV4GJAgd8O0Dw4ZK8e8d44yBhfYdRTgP73ws_HvoM3sSvgGy9nNQdRjqzj5k-Kp0uTjemNjg"
         });
 
-        if (!token) {
-            console.log("No token generated");
+        if (!token || !currentUser) {
+            console.log("No token or user");
             return;
         }
 
-        await set(ref(db, "fcmTokens/" + currentUser.uid), token);
+        await set(
+            ref(db, `fcmTokens/${currentUser.uid}/${token}`),
+            true
+        );
+
+        console.log("FCM token saved for device");
     } catch (err) {
         console.error("FCM error:", err);
     }

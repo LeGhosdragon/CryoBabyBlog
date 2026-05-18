@@ -47,10 +47,6 @@ exports.attemptEntry = onCall(async (request) => {
     };
 });
 
-
-/* -----------------------------
-   CHAT NOTIFICATIONS (GEN 2 FIXED)
-------------------------------*/
 exports.notifyChat = onValueCreated(
     "/chatMessages/{messageId}",
     async (event) => {
@@ -62,7 +58,13 @@ exports.notifyChat = onValueCreated(
 
         const tokensSnap = await db.ref("fcmTokens").once("value");
         const tokensObj = tokensSnap.val() || {};
-        const tokens = Object.values(tokensObj);
+
+        let tokens = [];
+
+        Object.values(tokensObj).forEach(userTokens => {
+            if (!userTokens) return;
+            tokens.push(...Object.keys(userTokens));
+        });
 
         if (tokens.length === 0) {
             console.log("No FCM tokens found");
@@ -72,7 +74,11 @@ exports.notifyChat = onValueCreated(
         const message = {
             notification: {
                 title: `💬 ${msg.user}`,
-                body: msg.message || ""
+                body: msg.message || "",
+                imageUrl: "https://static.vecteezy.com/system/resources/previews/036/053/428/non_2x/ai-generated-planet-earth-and-space-planet-cartoon-on-transparent-background-free-png.png"
+            },
+            data: {
+                image: "https://static.vecteezy.com/system/resources/previews/036/053/428/non_2x/ai-generated-planet-earth-and-space-planet-cartoon-on-transparent-background-free-png.png"
             }
         };
 
