@@ -678,21 +678,12 @@ function exitChatMode() {
     print("Type 'help' for commands", "matrix");
 }
 
-function notify(message) {
-    const div = document.createElement("div");
-    div.className = "system-line";
-    div.textContent = `🔔 ${message}`;
-
-    output.appendChild(div);
-    output.scrollTop = output.scrollHeight;
-}
-
 function pushNotification(title, body) {
     if (Notification.permission !== "granted") return;
 
     new Notification(title, {
         body,
-        icon: "icons/icon-192.png"
+        icon: "icons/icon.webp"
     });
 }
 

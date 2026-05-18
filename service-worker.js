@@ -1,16 +1,22 @@
 const CACHE_NAME = "reconnect-v1";
 
 const filesToCache = [
-    "/",
-    "/index.html",
-    "/styles.css",
-    "/script.js"
+    "index.html",
+    "styles.css",
+    "app.js"
 ];
 
 self.addEventListener("install", event => {
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(filesToCache))
+        caches.open(CACHE_NAME).then(async cache => {
+            for (const file of filesToCache) {
+                try {
+                    await cache.add(file);
+                } catch (err) {
+                    console.error("Cache failed:", file, err);
+                }
+            }
+        })
     );
 
     self.skipWaiting();
