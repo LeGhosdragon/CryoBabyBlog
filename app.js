@@ -594,16 +594,16 @@ async function registerFCM() {
 print("Push supported: " + ("PushManager" in window), "system");
 print("SW controller: " + !!navigator.serviceWorker.controller, "system");
 print("Notif API: " + (typeof Notification), "system");
-const token = await Promise.race([
-    
-    getToken(messaging, {
+let token;
+try {
+    token = await getToken(messaging, {
         vapidKey: "BKrIMgSG5r0TDe6LV4GJAgd8O0Dw4ZK8e8d44yBhfYdRTgP73ws_HvoM3sSvgGy9nNQdRjqzj5k-Kp0uTjemNjg",
         serviceWorkerRegistration: firebaseSWRegistration
-    }),
-    new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("getToken timeout")), 10000)
-    )
-]);
+    });
+} catch (e) {
+    print("getToken crashed: " + e.message, "error");
+    throw e;
+}
 
 print("Token received: " + token, "system");
 
