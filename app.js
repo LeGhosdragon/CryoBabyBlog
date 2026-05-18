@@ -580,26 +580,19 @@ async function registerFCM() {
         const permission =
             await Notification.requestPermission();
 
-        if (permission !== "granted") {
-            print("Notifications blocked", "error");
+        if (permission !== "granted")
             return;
-        }
 
-        if (!currentUser?.uid) {
-            print("No user", "error");
+        if (!currentUser?.uid)
             return;
-        }
 
         print("SW wait...", "system");
 
-        const registration =
-            await navigator.serviceWorker.getRegistration(
-                "/firebase-messaging-sw.js"
-            );
+        if (!firebaseSWRegistration) {
 
-        if (!registration) {
-            print("SW missing", "error");
+            print("No SW registration", "error");
             return;
+
         }
 
         print("SW ready", "system");
@@ -611,27 +604,20 @@ async function registerFCM() {
                 "BKrIMgSG5r0TDe6LV4GJAgd8O0Dw4ZK8e8d44yBhfYdRTgP73ws_HvoM3sSvgGy9nNQdRjqzj5k-Kp0uTjemNjg",
 
                 serviceWorkerRegistration:
-                registration
+                firebaseSWRegistration
             }
         );
 
-        if (!token) {
-            print("No token generated", "error");
-            return;
-        }
+        print("Token received", "system");
 
         await set(
-            ref(
-                db,
-                `fcmTokens/${currentUser.uid}/${token}`
-            ),
+            ref(db, `fcmTokens/${currentUser.uid}/${token}`),
             true
         );
 
         print("FCM synced", "system");
 
-    }
-    catch(err) {
+    } catch(err) {
 
         console.error(err);
 
@@ -741,28 +727,59 @@ function isAdmin() {
 
 typeBoot();
 
+let firebaseSWRegistration = null;
+
 if ("serviceWorker" in navigator) {
 
     window.addEventListener("load", async () => {
 
         try {
 
-            const registration =
+            firebaseSWRegistration =
                 await navigator.serviceWorker.register(
                     "/firebase-messaging-sw.js"
                 );
 
             console.log("Firebase SW registered");
 
-            await navigator.serviceWorker.ready;
+            // Wait until worker is fully active
+            if (!firebaseSWRegistration.active) {
+
+                await new Promise(resolve => {
+
+                    const worker =
+                        firebaseSWRegistration.installing ||
+                        firebaseSWRegistration.waiting;
+
+                    if (!worker) {
+                        resolve();
+                        return;
+                    }
+
+                    worker.addEventListener(
+                        "statechange",
+                        () => {
+
+                            if (worker.state === "activated") {
+                                resolve();
+                            }
+
+                        }
+                    );
+
+                });
+
+            }
 
             console.log("Firebase SW active");
 
-        } catch (err) {
+        } catch(err) {
 
             console.error("SW failed:", err);
 
         }
 
     });
+
 }
+
