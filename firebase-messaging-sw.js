@@ -18,7 +18,7 @@ messaging.onBackgroundMessage((payload) => {
     payload?.notification?.title || "Notification",
     {
       body: payload?.notification?.body || "",
-      icon: "/icons/icon.webp"
+      icon: "icons/icon.webp"
     }
   );
 });
