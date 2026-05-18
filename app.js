@@ -740,7 +740,7 @@ async function getSW() {
     }
 
     firebaseSWRegistration = await navigator.serviceWorker.register(
-        "firebase-messaging-sw.js"
+        "./firebase-messaging-sw.js"
     );
 
     await navigator.serviceWorker.ready;
