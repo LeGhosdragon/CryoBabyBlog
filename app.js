@@ -574,42 +574,72 @@ async function handleSend(message) {
 }
 
 async function registerFCM() {
-  try {
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      print("Notifications blocked", "error");
-      return;
+
+    try {
+
+        const permission =
+            await Notification.requestPermission();
+
+        if (permission !== "granted") {
+            print("Notifications blocked", "error");
+            return;
+        }
+
+        if (!currentUser?.uid) {
+            print("No user", "error");
+            return;
+        }
+
+        print("SW wait...", "system");
+
+        const registration =
+            await navigator.serviceWorker.getRegistration(
+                "/firebase-messaging-sw.js"
+            );
+
+        if (!registration) {
+            print("SW missing", "error");
+            return;
+        }
+
+        print("SW ready", "system");
+
+        const token = await getToken(
+            messaging,
+            {
+                vapidKey:
+                "BKrIMgSG5r0TDe6LV4GJAgd8O0Dw4ZK8e8d44yBhfYdRTgP73ws_HvoM3sSvgGy9nNQdRjqzj5k-Kp0uTjemNjg",
+
+                serviceWorkerRegistration:
+                registration
+            }
+        );
+
+        if (!token) {
+            print("No token generated", "error");
+            return;
+        }
+
+        await set(
+            ref(
+                db,
+                `fcmTokens/${currentUser.uid}/${token}`
+            ),
+            true
+        );
+
+        print("FCM synced", "system");
+
     }
+    catch(err) {
 
-    if (!currentUser?.uid) {
-      print("No user", "error");
-      return;
+        console.error(err);
+
+        print(
+            "FCM FAILED: " + err.message,
+            "error"
+        );
     }
-
-    print("SW wait...", "system");
-
-    const registration = await navigator.serviceWorker.ready;
-
-    print("SW ready", "system");
-
-    const token = await getToken(messaging, {
-      vapidKey: "BKrIMgSG5r0TDe6LV4GJAgd8O0Dw4ZK8e8d44yBhfYdRTgP73ws_HvoM3sSvgGy9nNQdRjqzj5k-Kp0uTjemNjg",
-      serviceWorkerRegistration: registration
-    });
-
-    if (!token) {
-      print("No token generated", "error");
-      return;
-    }
-
-    await set(ref(db, `fcmTokens/${currentUser.uid}/${token}`), true);
-
-    print("FCM synced", "system");
-
-  } catch (err) {
-    console.error("FCM ERROR:", err);
-    print("FCM FAILED: " + err.message, "error");
-  }
 }
 
 function startCreateFlow() {
@@ -713,18 +743,26 @@ typeBoot();
 
 if ("serviceWorker" in navigator) {
 
-    window.addEventListener("load", () => {
+    window.addEventListener("load", async () => {
 
-        navigator.serviceWorker
-            .register("./service-worker.js")
-            .then(() => {
-                console.log("Service worker registered");
-            })
-            .catch(err => {
-                console.log("SW failed:", err);
-            });
+        try {
+
+            const registration =
+                await navigator.serviceWorker.register(
+                    "/firebase-messaging-sw.js"
+                );
+
+            console.log("Firebase SW registered");
+
+            await navigator.serviceWorker.ready;
+
+            console.log("Firebase SW active");
+
+        } catch (err) {
+
+            console.error("SW failed:", err);
+
+        }
 
     });
 }
-
-navigator.serviceWorker.register("/firebase-messaging-sw.js");
