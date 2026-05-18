@@ -134,9 +134,7 @@ onAuthStateChanged(auth, async (user) => {
    if (user) {
         currentUser = user;
 
-        setTimeout(() => {
-            registerFCM();
-        }, 500);
+        registerFCM();
 
         document.body.classList.add("logged-in");
 
@@ -588,12 +586,7 @@ async function registerFCM() {
 
         print("SW wait...", "system");
 
-        if (!firebaseSWRegistration) {
-
-            print("No SW registration", "error");
-            return;
-
-        }
+        firebaseSWRegistration = await getSWRegistration();
 
         print("SW ready", "system");
 
@@ -602,9 +595,7 @@ async function registerFCM() {
             {
                 vapidKey:
                 "BKrIMgSG5r0TDe6LV4GJAgd8O0Dw4ZK8e8d44yBhfYdRTgP73ws_HvoM3sSvgGy9nNQdRjqzj5k-Kp0uTjemNjg",
-
-                serviceWorkerRegistration:
-                firebaseSWRegistration
+                serviceWorkerRegistration: firebaseSWRegistration
             }
         );
 
@@ -725,6 +716,26 @@ function isAdmin() {
     return currentUser && ADMIN_EMAILS.includes(currentUser.email);
 }
 
+let swReadyPromise = null;
+
+function getSWRegistration() {
+    if (firebaseSWRegistration) return Promise.resolve(firebaseSWRegistration);
+
+    if (!swReadyPromise) {
+        swReadyPromise = new Promise(async (resolve, reject) => {
+            try {
+                firebaseSWRegistration = await navigator.serviceWorker.register("firebase-messaging-sw.js");
+
+                resolve(firebaseSWRegistration);
+            } catch (err) {
+                reject(err);
+            }
+        });
+    }
+
+    return swReadyPromise;
+}
+
 typeBoot();
 
 let firebaseSWRegistration = null;
@@ -737,7 +748,7 @@ if ("serviceWorker" in navigator) {
 
             firebaseSWRegistration =
                 await navigator.serviceWorker.register(
-                    "/firebase-messaging-sw.js"
+                    "firebase-messaging-sw.js"
                 );
 
             console.log("Firebase SW registered");
