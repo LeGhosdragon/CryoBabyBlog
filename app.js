@@ -583,7 +583,7 @@ async function registerFCM() {
             return;
         }
 
-        print("SW init...", "system");
+        //print("SW init...", "system");
 
         // ✅ single source of truth for SW
         const reg = await getSW();
@@ -595,7 +595,7 @@ async function registerFCM() {
 
         await navigator.serviceWorker.ready;
 
-        print("SW ready", "system");
+        //print("SW ready", "system");
 
         // Optional: wait for controller (helps mobile Safari/Android edge cases)
         if (!navigator.serviceWorker.controller) {
@@ -608,9 +608,9 @@ async function registerFCM() {
             });
         }
 
-        print("SW controller: " + !!navigator.serviceWorker.controller, "system");
+        //print("SW controller: " + !!navigator.serviceWorker.controller, "system");
 
-        print("Requesting FCM token...", "system");
+        //print("Requesting FCM token...", "system");
 
         // ✅ ONLY Firebase Messaging (no raw Push API)
         const token = await getToken(messaging, {
@@ -623,11 +623,11 @@ async function registerFCM() {
             return;
         }
 
-        print("Token received", "system");
+        //print("Token received", "system");
 
         await set(ref(db, `fcmTokens/${currentUser.uid}/${token}`), true);
 
-        print("FCM synced", "system");
+        //print("FCM synced", "system");
 
     } catch (err) {
         console.error(err);
@@ -728,8 +728,6 @@ function isAdmin() {
 let swReadyPromise = null;
 
 typeBoot();
-
-
 
 
 async function getSW() {
