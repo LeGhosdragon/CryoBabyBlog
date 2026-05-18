@@ -591,8 +591,11 @@ async function registerFCM() {
         print("SW ready", "system");
 
         print("Requesting token...", "system");
-
+print("Push supported: " + ("PushManager" in window), "system");
+print("SW controller: " + !!navigator.serviceWorker.controller, "system");
+print("Notif API: " + (typeof Notification), "system");
 const token = await Promise.race([
+    
     getToken(messaging, {
         vapidKey: "BKrIMgSG5r0TDe6LV4GJAgd8O0Dw4ZK8e8d44yBhfYdRTgP73ws_HvoM3sSvgGy9nNQdRjqzj5k-Kp0uTjemNjg",
         serviceWorkerRegistration: firebaseSWRegistration
