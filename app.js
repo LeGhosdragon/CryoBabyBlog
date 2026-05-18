@@ -102,6 +102,7 @@ async function loadEntries() {
         console.error(err);
     }
 }
+
 window.addEventListener("load", () => {
     keepInputFocused();
 });
