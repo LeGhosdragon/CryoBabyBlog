@@ -577,6 +577,20 @@ async function registerFCM() {
         const permission = await Notification.requestPermission();
         if (permission !== "granted") return;
 
+
+        print("Testing raw Push subscription...", "system");
+
+        try {
+            const sub = await firebaseSWRegistration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: "YOUR_VAPID_PUBLIC_KEY"
+            });
+
+            print("RAW PUSH OK", "system");
+            console.log(sub);
+        } catch (e) {
+            print("RAW PUSH FAILED: " + e.message, "error");
+        }
         if (!currentUser?.uid) return;
 
         print("SW wait...", "system");
