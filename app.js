@@ -572,60 +572,52 @@ async function handleSend(message) {
 }
 
 async function registerFCM() {
-
     try {
 
-        const permission =
-            await Notification.requestPermission();
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") return;
 
-        if (permission !== "granted")
-            return;
-
-        if (!currentUser?.uid)
-            return;
+        if (!currentUser?.uid) return;
 
         print("SW wait...", "system");
 
-        firebaseSWRegistration = await getSWRegistration();
+        firebaseSWRegistration = await navigator.serviceWorker.ready;
 
         print("SW ready", "system");
 
+        // IMPORTANT: wait for controller BEFORE ANY Firebase call
+        await new Promise(resolve => {
+            if (navigator.serviceWorker.controller) return resolve();
+
+            navigator.serviceWorker.addEventListener("controllerchange", resolve);
+
+            setTimeout(resolve, 2000);
+        });
+
+        print("SW controller: " + !!navigator.serviceWorker.controller, "system");
+
         print("Requesting token...", "system");
-print("Push supported: " + ("PushManager" in window), "system");
-print("SW controller: " + !!navigator.serviceWorker.controller, "system");
-print("Notif API: " + (typeof Notification), "system");
-let token;
-try {
-    token = await getToken(messaging, {
-        vapidKey: "BKrIMgSG5r0TDe6LV4GJAgd8O0Dw4ZK8e8d44yBhfYdRTgP73ws_HvoM3sSvgGy9nNQdRjqzj5k-Kp0uTjemNjg",
-        serviceWorkerRegistration: firebaseSWRegistration
-    });
-} catch (e) {
-    print("getToken crashed: " + e.message, "error");
-    throw e;
-}
 
-print("Token received: " + token, "system");
+        print("Push supported: " + ("PushManager" in window), "system");
+        print("Notif API: " + (typeof Notification), "system");
 
-        print("Token received", "system");
+        const token = await getToken(messaging, {
+            vapidKey: "BKrIMgSG5r0TDe6LV4GJAgd8O0Dw4ZK8e8d44yBhfYdRTgP73ws_HvoM3sSvgGy9nNQdRjqzj5k-Kp0uTjemNjg",
+            serviceWorkerRegistration: firebaseSWRegistration
+        });
 
-        await set(
-            ref(db, `fcmTokens/${currentUser.uid}/${token}`),
-            true
-        );
+        print("Token received: " + token, "system");
+
+        await set(ref(db, `fcmTokens/${currentUser.uid}/${token}`), true);
 
         print("FCM synced", "system");
 
-    } catch(err) {
-
+    } catch (err) {
         console.error(err);
-
-        print(
-            "FCM FAILED: " + err.message,
-            "error"
-        );
+        print("FCM FAILED: " + err.message, "error");
     }
 }
+   
 
 function startCreateFlow() {
     createMode = true;
