@@ -7,18 +7,15 @@ const fontSize = 14;
 let columns;
 let drops = [];
 
-// 🎯 initial setup
 function init() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
     columns = Math.floor(canvas.width / fontSize);
 
-    // only initialize ONCE
     if (drops.length === 0) {
         drops = Array(columns).fill(1);
     } else {
-        // resize without resetting animation state
         const newDrops = Array(columns).fill(1);
 
         for (let i = 0; i < Math.min(columns, drops.length); i++) {
@@ -53,7 +50,6 @@ function draw() {
 
 setInterval(draw, 33);
 
-// 🧠 resize without reset
 window.addEventListener("resize", () => {
     init();
 });

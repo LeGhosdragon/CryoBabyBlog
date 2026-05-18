@@ -4,34 +4,59 @@ body {
     color: #00ff9d;
     font-family: monospace;
     overflow: hidden;
+
+    height: 100vh;
+    height: 100dvh;
+
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 #matrix {
     position: fixed;
     top: 0;
     left: 0;
+    width: 100%;
+    height: 100%;
     z-index: 0;
+
+    transition: opacity 0.8s ease, filter 0.8s ease;
+    opacity: 1;
+}
+
+body.logged-in #matrix {
+    opacity: 0.3;
+    filter: blur(0.5px);
 }
 
 #boot {
-    position: absolute;
-    width: 100%;
-    height: 100%;
+    position: fixed;
+    inset: 0;
     background: black;
     color: #00ff9d;
+
     display: flex;
     align-items: center;
     justify-content: center;
+
     z-index: 5;
     font-size: 14px;
     letter-spacing: 2px;
+
+    padding: env(safe-area-inset-top)
+             env(safe-area-inset-right)
+             env(safe-area-inset-bottom)
+             env(safe-area-inset-left);
 }
 
 #loginContainer {
     position: relative;
     z-index: 10;
     display: none;
+
     height: 100vh;
+    height: 100dvh;
+
     align-items: center;
     justify-content: center;
 }
@@ -41,55 +66,82 @@ body {
     border: 1px solid #00ff9d;
     box-shadow: 0 0 25px #00ff9d33;
     background: rgba(0,0,0,0.7);
+
+    width: min(90%, 400px);
 }
 
 #terminalContainer {
     position: relative;
     z-index: 10;
     display: none;
+
     height: 100vh;
+    height: 100dvh;
+
     padding: 20px;
+    box-sizing: border-box;
 }
 
 #terminalOutput {
-    height: 90%;
+    height: calc(100% - 60px);
     overflow-y: auto;
+    overflow-x: hidden;
+
     white-space: pre-wrap;
+    color: var(--system);
+    line-height: 1.4;
+}
+
+.inputRow {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.prompt {
+    margin-right: 8px;
+    color: lime;
+    font-family: monospace;
+
+    white-space: nowrap;
+}
+
+#commandInput {
+    flex: 1;
+    min-width: 0;
+
+    background: rgb(20, 35, 20);
+    border: none;
+    outline: none;
+
+    color: lime;
+    font-family: monospace;
+    padding: 8px;
+}
+
+#enterBtn {
+    width: 45px;
+    flex-shrink: 0;
+
+    background: black;
+    border: none;
+    color: lime;
+    font-family: monospace;
+    cursor: pointer;
+
+    border-left: 1px solid #333;
+}
+
+#enterBtn:active {
+    background: #111;
 }
 
 input {
-    background: transparent;
-    border: 1px solid #00ff9d;
-    color: #00ff9d;
-    padding: 8px;
-    outline: none;
+    font-size: 16px;
 }
 
 button {
-    margin-top: 10px;
-    background: transparent;
-    border: 1px solid #00ff9d;
-    color: #00ff9d;
-    cursor: pointer;
-}
-
-button:hover {
-    background: #00ff9d;
-    color: black;
-}
-
-#matrix {
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 0;
-    transition: opacity 0.8s ease, filter 0.8s ease;
-    opacity: 1;
-}
-
-body.logged-in #matrix {
-    opacity: 0.3;
-    filter: blur(0.5px);
+    font-size: 16px;
 }
 
 :root {
@@ -103,42 +155,13 @@ body.logged-in #matrix {
     --message: #00d4ff;
 }
 
-#terminalOutput {
-    height: 90%;
-    overflow-y: auto;
-    white-space: pre-wrap;
-    color: var(--system);
-    line-height: 1.4;
-}
+.system-line { color: var(--system); }
+.user-line { color: var(--user); }
+.matrix-line { color: var(--matrix); }
+.message-line { color: var(--message); }
+.display-line { color: var(--display); }
 
-.prompt {
-    color: var(--system);
-    text-shadow: 0 0 8px var(--system);
-}
-
-.user-line {
-    color: var(--user);
-}
-
-.matrix-line {
-    color: var(--matrix);
-}
-
-.message-line {
-    color: var(--message);
-}
-
-.display-line {
-    color: var(--display);
-}
-
-.system-line {
-    color: var(--system);
-}
-
-.command {
-    color: var(--user);
-}
+.command { color: var(--user); }
 
 .error-line {
     color: var(--warn);
@@ -152,44 +175,45 @@ body.logged-in #matrix {
 
 #terminalOutput div {
     margin: 2px 0;
-}
-
-#terminalOutput div {
     white-space: pre-wrap;
 }
 
-.inputRow {
-    display: flex;
-    align-items: center;
-    width: 100%;
+@media (max-width: 768px) {
+
+    body {
+        height: 100dvh;
+        overflow: hidden;
+    }
+
+    #loginContainer,
+    #terminalContainer {
+        height: 100dvh;
+        padding: 12px;
+        box-sizing: border-box;
+    }
+
+    .loginBox {
+        padding: 20px;
+    }
+
+    #terminalOutput {
+        height: calc(100dvh - 70px);
+    }
+
+    .prompt {
+        max-width: 35%;
+        font-size: 12px;
+    }
+
+    #boot {
+        text-align: center;
+        padding: 20px;
+    }
 }
 
-.prompt {
-    margin-right: 8px;
-    color: lime;
-    font-family: monospace;
-}
-
-#commandInput {
-    flex: 1;
-    background: rgb(20, 35, 20);
-    border: none;
-    outline: none;
-    color: lime;
-    font-family: monospace;
-    padding: 8px;
-}
-
-#enterBtn {
-    width: 45px;
-    background: black;
-    border: none;
-    color: lime;
-    font-family: monospace;
-    cursor: pointer;
-    border-left: 1px solid #333;
-}
-
-#enterBtn:active {
-    background: #111;
+@supports (padding: env(safe-area-inset-top)) {
+    body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
 }

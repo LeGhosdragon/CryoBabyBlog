@@ -12,6 +12,8 @@ from "https://www.gstatic.com/firebasejs/12.0.0/firebase-functions.js";
 import { getDatabase, ref, set, get, push, onChildAdded }
 from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 import { onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+import { getMessaging, getToken, onMessage } 
+from "https://www.gstatic.com/firebasejs/12.0.0/firebase-messaging.js";
 const firebaseConfig = {
     apiKey: "AIzaSyB5rMiSxH1ugXKBQAQsSHyKh5zhUubEp6g",
     authDomain: "cosmic-pickle.firebaseapp.com",
@@ -27,6 +29,7 @@ const functions = getFunctions(app);
 const attemptEntry = httpsCallable(functions, "attemptEntry");
 const auth=getAuth(app);
 const db = getDatabase(app);
+const messaging = getMessaging(app);
 
 const boot = document.getElementById("boot");
 const bootText = document.getElementById("bootText");
@@ -106,8 +109,6 @@ function keepInputFocused() {
     input.focus();
 }
 
-// LOGIN
-
 loginBtn.onclick=()=>{
 
     signInWithEmailAndPassword(
@@ -125,16 +126,27 @@ loginBtn.onclick=()=>{
 
 
 
-// Detect login state
 
 onAuthStateChanged(auth, async (user) => {
-    if (user) {
+    const prompt = document.getElementById("promptText");
+
+   if (user) {
         currentUser = user;
+
+        setTimeout(() => {
+            registerFCM();
+        }, 500);
 
         document.body.classList.add("logged-in");
 
         loginContainer.style.display = "none";
         terminalContainer.style.display = "block";
+
+        const name = user.email
+            ? user.email.split("@")[0]
+            : "user";
+
+        prompt.textContent = `${name}:~$`;
 
         print(`Access granted
 User: ${user.email}
@@ -143,6 +155,7 @@ Type "help" for a list of usable commands
 `);
 
         startLiveEntries();
+
     } else {
         currentUser = null;
 
@@ -152,11 +165,11 @@ Type "help" for a list of usable commands
         loginContainer.style.display = "flex";
 
         output.innerHTML = "";
+
+        prompt.textContent = "guest:~$";
     }
 });
 
-
-// TERMINAL
 
 function print(text, type = "system") {
 
@@ -210,7 +223,7 @@ input.addEventListener("keydown", async (e) => {
 
     if (e.key !== "Enter") return;
 
-    e.preventDefault(); // IMPORTANT
+    e.preventDefault();
 
     submitCommand();
 });
@@ -220,7 +233,6 @@ function runCommand(command) {
     const args = command.split(" ");
     const base = args[0].toLowerCase();
 
-    // 🔥 CHAT MODE BLOCK (FIXED ORDER)
     if (chatMode && base !== "send" && base !== "back") {
         print("CHAT MODE ACTIVE → use: send <message> or back", "error");
         return;
@@ -237,26 +249,25 @@ function runCommand(command) {
             print("", "system");
 
             print("GENERAL COMMANDS:", "matrix");
-            print("  help                 Show this help menu", "system");
-            print("  clear                Clear the terminal screen", "system");
-            print("  whoami               Show current logged-in user", "system");
-            print("  date                 Show current system time", "system");
-            print("  logout               Sign out of the system", "system");
-            print("  create <name> <type> <password> <content>   [ADMIN ONLY]", "error");
+            print("  help            Show this help menu", "system");
+            print("  clear           Clear the terminal screen", "system");
+            print("  whoami          Show current logged-in user", "system");
+            print("  date            Show current system time", "system");
+            print("  logout          Sign out of the system", "system");
 
             print("", "system");
 
             print("ENTRY SYSTEM:", "matrix");
-            print("  entries              List all available entries", "system");
-            print("  attempt <entry>      Start a challenge entry", "system");
-            print("  try <answer>         Submit answer", "system");
+            print("  entries         List all available entries", "system");
+            print("  attempt <entry> Start a challenge entry", "system");
+            print("  try <answer>    Submit answer", "system");
 
             print("", "system");
 
             print("CHAT MODE:", "matrix");
-            print("  chat                 Enter chat mode", "system");
-            print("  send <message>       Send message", "system");
-            print("  back                 Exit chat mode", "system");
+            print("  chat            Enter chat mode", "system");
+            print("  send <message>  Send message", "system");
+            print("  back            Exit chat mode", "system");
 
             print("", "system");
 
@@ -451,7 +462,6 @@ function submitCommand() {
 
     input.value = "";
 
-    // record
     push(ref(db, "records"), {
         user: currentUser?.email || "guest",
         input: command,
@@ -462,7 +472,6 @@ function submitCommand() {
     typedHistory = "";
     localStorage.removeItem("typedHistory");
 
-    // display in terminal
     const line = document.createElement("div");
 
     const prompt = document.createElement("span");
@@ -481,14 +490,6 @@ function submitCommand() {
 
     runCommand(command);
 }
-
-terminalContainer.addEventListener("click", () => {
-    keepInputFocused();
-});
-
-input.addEventListener("blur", () => {
-    setTimeout(() => input.focus(), 10);
-});
 
 async function handleTry(answer) {
 
@@ -571,6 +572,31 @@ async function handleSend(message) {
     }
 }
 
+async function registerFCM() {
+
+    try {
+        const permission = await Notification.requestPermission();
+
+        if (permission !== "granted") {
+            console.log("Notifications blocked");
+            return;
+        }
+
+        const token = await getToken(messaging, {
+            vapidKey: "BKrIMgSG5r0TDe6LV4GJAgd8O0Dw4ZK8e8d44yBhfYdRTgP73ws_HvoM3sSvgGy9nNQdRjqzj5k-Kp0uTjemNjg"
+        });
+
+        if (!token) {
+            console.log("No token generated");
+            return;
+        }
+
+        await set(ref(db, "fcmTokens/" + currentUser.uid), token);
+    } catch (err) {
+        console.error("FCM error:", err);
+    }
+}
+
 function startCreateFlow() {
     createMode = true;
     createStep = 1;
@@ -592,7 +618,6 @@ async function finishCreate() {
 
         const id = "entry_" + Date.now();
 
-        // PUBLIC ENTRY (safe to read)
         await set(ref(db, "entries/" + id), {
             name: createData.name,
             question: createData.question,
@@ -600,9 +625,8 @@ async function finishCreate() {
             createdAt: Date.now()
         });
 
-        // PRIVATE SECRET (password + hidden content)
         await set(ref(db, "entrySecrets/" + id), {
-            password: createData.password.toLowerCase(), // normalize
+            password: createData.password.toLowerCase(),
             content: createData.content
         });
 
@@ -621,9 +645,8 @@ async function finishCreate() {
 function exitChatMode() {
     chatMode = false;
 
-    // stop live updates
     if (chatListener) {
-        chatListener(); // unsubscribes listener
+        chatListener();
         chatListener = null;
     }
 
@@ -632,6 +655,33 @@ function exitChatMode() {
     print("Exited chat mode", "system");
     print("Type 'help' for commands", "matrix");
 }
+
+function notify(message) {
+    const div = document.createElement("div");
+    div.className = "system-line";
+    div.textContent = `🔔 ${message}`;
+
+    output.appendChild(div);
+    output.scrollTop = output.scrollHeight;
+}
+
+function pushNotification(title, body) {
+    if (Notification.permission !== "granted") return;
+
+    new Notification(title, {
+        body,
+        icon: "icons/icon-192.png"
+    });
+}
+
+onMessage(messaging, (payload) => {
+    console.log("Foreground message:", payload);
+
+    pushNotification(
+        payload.notification.title,
+        payload.notification.body
+    );
+});
 
 let i = 0;
 
@@ -645,3 +695,21 @@ function isAdmin() {
 }
 
 typeBoot();
+
+if ("serviceWorker" in navigator) {
+
+    window.addEventListener("load", () => {
+
+        navigator.serviceWorker
+            .register("./service-worker.js")
+            .then(() => {
+                console.log("Service worker registered");
+            })
+            .catch(err => {
+                console.log("SW failed:", err);
+            });
+
+    });
+}
+
+navigator.serviceWorker.register("/firebase-messaging-sw.js");
