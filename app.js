@@ -33,7 +33,7 @@ const messaging = getMessaging(app);
 
 const boot = document.getElementById("boot");
 const bootText = document.getElementById("bootText");
-
+let firebaseSWRegistration = null;
 const ADMIN_EMAILS = [
     "adminuser@me.ca"
 ];
@@ -590,14 +590,19 @@ async function registerFCM() {
 
         print("SW ready", "system");
 
-        const token = await getToken(
-            messaging,
-            {
-                vapidKey:
-                "BKrIMgSG5r0TDe6LV4GJAgd8O0Dw4ZK8e8d44yBhfYdRTgP73ws_HvoM3sSvgGy9nNQdRjqzj5k-Kp0uTjemNjg",
-                serviceWorkerRegistration: firebaseSWRegistration
-            }
-        );
+        print("Requesting token...", "system");
+
+const token = await Promise.race([
+    getToken(messaging, {
+        vapidKey: "BKrIMgSG5r0TDe6LV4GJAgd8O0Dw4ZK8e8d44yBhfYdRTgP73ws_HvoM3sSvgGy9nNQdRjqzj5k-Kp0uTjemNjg",
+        serviceWorkerRegistration: firebaseSWRegistration
+    }),
+    new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("getToken timeout")), 10000)
+    )
+]);
+
+print("Token received: " + token, "system");
 
         print("Token received", "system");
 
@@ -729,7 +734,7 @@ function getSWRegistration() {
 
 typeBoot();
 
-let firebaseSWRegistration = null;
+
 
 if ("serviceWorker" in navigator) {
 
