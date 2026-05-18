@@ -573,54 +573,75 @@ async function handleSend(message) {
 
 async function registerFCM() {
     try {
-
         const permission = await Notification.requestPermission();
         if (permission !== "granted") return;
 
-
-        print("Testing raw Push subscription...", "system");
-
-        try {
-            const sub = await firebaseSWRegistration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: "BKrIMgSG5r0TDe6LV4GJAgd8O0Dw4ZK8e8d44yBhfYdRTgP73ws_HvoM3sSvgGy9nNQdRjqzj5k-Kp0uTjemNjg"
-            });
-
-            print("RAW PUSH OK", "system");
-            console.log(sub);
-        } catch (e) {
-            print("RAW PUSH FAILED: " + e.message, "error");
-        }
         if (!currentUser?.uid) return;
 
-        print("SW wait...", "system");
+        print("SW init...", "system");
 
+        // 1. Ensure SW is registered + ready
+        const reg = await navigator.serviceWorker.register("firebase-messaging-sw.js");
         firebaseSWRegistration = await navigator.serviceWorker.ready;
 
         print("SW ready", "system");
 
-        // IMPORTANT: wait for controller BEFORE ANY Firebase call
+        // 2. Ensure controller exists (iOS safety)
         await new Promise(resolve => {
             if (navigator.serviceWorker.controller) return resolve();
 
-            navigator.serviceWorker.addEventListener("controllerchange", resolve);
+            const handler = () => resolve();
+            navigator.serviceWorker.addEventListener("controllerchange", handler);
 
-            setTimeout(resolve, 2000);
+            setTimeout(() => {
+                navigator.serviceWorker.removeEventListener("controllerchange", handler);
+                resolve();
+            }, 3000);
         });
 
         print("SW controller: " + !!navigator.serviceWorker.controller, "system");
+
+        print("Testing raw Push subscription...", "system");
+
+        // 3. SAFE push subscription (prevents iOS infinite hang)
+        let sub = null;
+
+        try {
+            sub = await Promise.race([
+                firebaseSWRegistration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: "BDJeVSFvCJkGKQ98AuQIGP-9HuSdSS_AMCPHP_aeAX-UIys21vHN2zXXVwEHRFUe9mda64e9h2hQUHWhMShUCwY"
+                }),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error("Push subscribe timeout")), 8000)
+                )
+            ]);
+
+            print("RAW PUSH OK", "system");
+        } catch (e) {
+            print("RAW PUSH FAILED: " + e.message, "error");
+            return; // stop here so we don't continue broken state
+        }
+
+        console.log(sub);
 
         print("Requesting token...", "system");
 
         print("Push supported: " + ("PushManager" in window), "system");
         print("Notif API: " + (typeof Notification), "system");
 
-        const token = await getToken(messaging, {
-            vapidKey: "BKrIMgSG5r0TDe6LV4GJAgd8O0Dw4ZK8e8d44yBhfYdRTgP73ws_HvoM3sSvgGy9nNQdRjqzj5k-Kp0uTjemNjg",
-            serviceWorkerRegistration: firebaseSWRegistration
-        });
+        // 4. Firebase token (also protected from hanging)
+        const token = await Promise.race([
+            getToken(messaging, {
+                vapidKey: "BDJeVSFvCJkGKQ98AuQIGP-9HuSdSS_AMCPHP_aeAX-UIys21vHN2zXXVwEHRFUe9mda64e9h2hQUHWhMShUCwY",
+                serviceWorkerRegistration: firebaseSWRegistration
+            }),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("getToken timeout")), 10000)
+            )
+        ]);
 
-        print("Token received: " + token, "system");
+        print("Token received", "system");
 
         await set(ref(db, `fcmTokens/${currentUser.uid}/${token}`), true);
 
@@ -631,6 +652,7 @@ async function registerFCM() {
         print("FCM FAILED: " + err.message, "error");
     }
 }
+            
    
 
 function startCreateFlow() {
