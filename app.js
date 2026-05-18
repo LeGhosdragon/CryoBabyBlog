@@ -110,22 +110,14 @@ function keepInputFocused() {
     input.focus();
 }
 
-loginBtn.onclick=()=>{
-
-    signInWithEmailAndPassword(
-        auth,
-        email.value,
-        password.value
-    )
-
-    .catch(err=>{
-        error.innerText=err.message;
-    });
-
+loginBtn.onclick = async () => {
+    try {
+        await signInWithEmailAndPassword(auth, email.value, password.value);
+        await registerFCM();
+    } catch (err) {
+        error.innerText = err.message;
+    }
 };
-
-
-
 
 
 onAuthStateChanged(auth, async (user) => {
@@ -133,8 +125,6 @@ onAuthStateChanged(auth, async (user) => {
 
    if (user) {
         currentUser = user;
-
-        registerFCM();
 
         document.body.classList.add("logged-in");
 
@@ -572,21 +562,42 @@ async function handleSend(message) {
 }
 
 async function registerFCM() {
+    if (!window.isSecureContext) {
+        print("HTTPS required for notifications", "error");
+        return;
+    }
     try {
         const permission = await Notification.requestPermission();
-        if (permission !== "granted") return;
-        if (!currentUser?.uid) return;
+        if (permission !== "granted") {
+            print("Notifications not allowed", "error");
+            return;
+        }
+
+        if (!currentUser?.uid) {
+            print("No user logged in", "error");
+            return;
+        }
+
+        if (!("serviceWorker" in navigator)) {
+            print("Service Worker not supported", "error");
+            return;
+        }
 
         print("SW init...", "system");
 
-        // 1. Register SW ONCE
-        const reg = await navigator.serviceWorker.register("firebase-messaging-sw.js");
+        // ✅ single source of truth for SW
+        const reg = await getSW();
+
+        if (!navigator.serviceWorker.controller) {
+            window.location.reload();
+            return;
+        }
 
         await navigator.serviceWorker.ready;
 
         print("SW ready", "system");
 
-        // 2. Ensure controller exists (iOS fix)
+        // Optional: wait for controller (helps mobile Safari/Android edge cases)
         if (!navigator.serviceWorker.controller) {
             await new Promise(resolve => {
                 const timeout = setTimeout(resolve, 3000);
@@ -599,29 +610,18 @@ async function registerFCM() {
 
         print("SW controller: " + !!navigator.serviceWorker.controller, "system");
 
-        print("Testing raw Push subscription...", "system");
+        print("Requesting FCM token...", "system");
 
-        // 3. IMPORTANT: use SAME reg, not firebaseSWRegistration
-        const sub = await Promise.race([
-            reg.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: "BDJeVSFvCJkGKQ98AuQIGP-9HuSdSS_AMCPHP_aeAX-UIys21vHN2zXXVwEHRFUe9mda64e9h2hQUHWhMShUCwY"
-            }),
-            new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("Push subscribe timeout")), 8000)
-            )
-        ]);
-
-        print("RAW PUSH OK", "system");
-
-        console.log(sub);
-
-        print("Requesting token...", "system");
-
+        // ✅ ONLY Firebase Messaging (no raw Push API)
         const token = await getToken(messaging, {
             vapidKey: "BDJeVSFvCJkGKQ98AuQIGP-9HuSdSS_AMCPHP_aeAX-UIys21vHN2zXXVwEHRFUe9mda64e9h2hQUHWhMShUCwY",
             serviceWorkerRegistration: reg
         });
+
+        if (!token) {
+            print("Failed to get FCM token", "error");
+            return;
+        }
 
         print("Token received", "system");
 
@@ -727,79 +727,23 @@ function isAdmin() {
 
 let swReadyPromise = null;
 
-function getSWRegistration() {
-    if (firebaseSWRegistration) return Promise.resolve(firebaseSWRegistration);
-
-    if (!swReadyPromise) {
-        swReadyPromise = new Promise(async (resolve, reject) => {
-            try {
-                firebaseSWRegistration = await navigator.serviceWorker.register("firebase-messaging-sw.js");
-
-                resolve(firebaseSWRegistration);
-            } catch (err) {
-                reject(err);
-            }
-        });
-    }
-
-    return swReadyPromise;
-}
-
 typeBoot();
 
 
 
-if ("serviceWorker" in navigator) {
 
-    window.addEventListener("load", async () => {
+async function getSW() {
+    if (firebaseSWRegistration) return firebaseSWRegistration;
 
-        try {
+    if (!("serviceWorker" in navigator)) {
+        throw new Error("Service Worker not supported");
+    }
 
-            firebaseSWRegistration =
-                await navigator.serviceWorker.register(
-                    "firebase-messaging-sw.js"
-                );
+    firebaseSWRegistration = await navigator.serviceWorker.register(
+        "firebase-messaging-sw.js"
+    );
 
-            console.log("Firebase SW registered");
+    await navigator.serviceWorker.ready;
 
-            // Wait until worker is fully active
-            if (!firebaseSWRegistration.active) {
-
-                await new Promise(resolve => {
-
-                    const worker =
-                        firebaseSWRegistration.installing ||
-                        firebaseSWRegistration.waiting;
-
-                    if (!worker) {
-                        resolve();
-                        return;
-                    }
-
-                    worker.addEventListener(
-                        "statechange",
-                        () => {
-
-                            if (worker.state === "activated") {
-                                resolve();
-                            }
-
-                        }
-                    );
-
-                });
-
-            }
-
-            console.log("Firebase SW active");
-
-        } catch(err) {
-
-            console.error("SW failed:", err);
-
-        }
-
-    });
-
+    return firebaseSWRegistration;
 }
-
