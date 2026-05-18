@@ -583,7 +583,7 @@ async function registerFCM() {
         try {
             const sub = await firebaseSWRegistration.pushManager.subscribe({
                 userVisibleOnly: true,
-                applicationServerKey: "YOUR_VAPID_PUBLIC_KEY"
+                applicationServerKey: "BKrIMgSG5r0TDe6LV4GJAgd8O0Dw4ZK8e8d44yBhfYdRTgP73ws_HvoM3sSvgGy9nNQdRjqzj5k-Kp0uTjemNjg"
             });
 
             print("RAW PUSH OK", "system");
