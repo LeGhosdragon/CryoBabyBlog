@@ -57,16 +57,6 @@ body.logged-in #matrix {
     justify-content: center;
 }
 
-.loginBox {
-    padding: 30px;
-    border: 1px solid #00ff9d;
-    box-shadow: 0 0 25px #00ff9d33;
-    background: rgba(0,0,0,0.7);
-
-    width: min(90%, 400px);
-}
-
-
 #terminalContainer {
     position: relative;
     z-index: 10;
@@ -98,37 +88,6 @@ body.logged-in #matrix {
     font-family: monospace;
     white-space: nowrap;
 }
-
-#commandInput {
-    flex: 1;
-    min-width: 0;
-
-    background: rgb(20, 35, 20);
-    border: none;
-    outline: none;
-
-    color: lime;
-    font-family: monospace;
-    padding: 8px;
-}
-
-#enterBtn {
-    width: 45px;
-    flex-shrink: 0;
-
-    background: black;
-    border: none;
-    color: lime;
-    font-family: monospace;
-    cursor: pointer;
-
-    border-left: 1px solid #333;
-}
-
-#enterBtn:active {
-    background: #111;
-}
-
 
 #boot {
     position: fixed;
@@ -168,10 +127,13 @@ body.logged-in #matrix {
     border: 1px solid #00ff9d;
     box-shadow: 0 0 25px #00ff9d33;
     background: rgba(0,0,0,0.7);
-
+    border-radius: 10px;
+    backdrop-filter: blur(6px);
     width: min(90%, 400px);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
 }
-
 
 #terminalContainer {
     position: relative;
@@ -210,26 +172,46 @@ body.logged-in #matrix {
 #commandInput {
     flex: 1;
     min-width: 0;
-
+    resize: none;
     background: rgb(20, 35, 20);
     border: none;
     outline: none;
-
     color: lime;
     font-family: monospace;
     padding: 8px;
+    scroll-behavior: smooth;
+    height: 18px; 
+    max-height: 120px;
+    line-height: 1.4;
+    overflow-y: auto;
+}
+
+/* Chrome / Edge / Safari */
+#commandInput::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+}
+
+/* Firefox */
+#commandInput {
+    scrollbar-width: none;
+}
+
+/* IE / old Edge (optional legacy) */
+#commandInput {
+    -ms-overflow-style: none;
 }
 
 #enterBtn {
     width: 45px;
     flex-shrink: 0;
-
-    background: black;
+    height: 34px;
+    background: rgb(8, 20, 0);
     border: none;
     color: lime;
     font-family: monospace;
     cursor: pointer;
-
+    box-shadow: #36f800;
     border-left: 1px solid #333;
 }
 
@@ -315,18 +297,7 @@ input, button {
     }
 }
 
-.loginBox {
-    padding: 32px;
-    border: 1px solid #00ff9d;
-    box-shadow: 0 0 30px rgba(0, 255, 157, 0.15);
-    background: rgba(0, 0, 0, 0.85);
-    border-radius: 10px;
-    backdrop-filter: blur(6px);
 
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
 
 .loginBox input {
     background: transparent;

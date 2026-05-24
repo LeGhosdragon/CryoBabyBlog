@@ -9,7 +9,19 @@ import {
 from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
 import { getFunctions, httpsCallable } 
 from "https://www.gstatic.com/firebasejs/12.0.0/firebase-functions.js";
-import { getDatabase, ref, set, get, push, onChildAdded }
+import {
+    getDatabase,
+    ref,
+    set,
+    get,
+    push,
+    onChildAdded,
+    query,
+    orderByChild,
+    limitToLast,
+    endBefore,
+    startAt
+}
 from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 import { onValue } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 import { getMessaging, getToken, onMessage } 
@@ -37,6 +49,10 @@ let firebaseSWRegistration = null;
 const ADMIN_EMAILS = [
     "adminuser@me.ca"
 ];
+const CHAT_PAGE_SIZE = 50;
+let oldestLoadedTimestamp = null;
+let newestLoadedTimestamp = null;
+let loadingOlder = false;
 let chatListener = null;
 let activeChallenge = null;
 let cachedEntries = {};
@@ -47,7 +63,12 @@ let createStep = 0;
 let createData = {};
 let currentUser = null;
 let cachedCompletions = {};
-
+const COLOR_PALETTE = [
+    "#11af11", "#6099ee", "#ff4d4d", "#ffcc00",
+    "#a855f7", "#06b6d4", "#f97316", "#22c55e"
+];
+let userColorCache = {};
+let currentLine = null;
 
 const enterBtn= 
 document.getElementById("enterBtn");
@@ -145,6 +166,7 @@ Type "help" for a list of usable commands
 `);
 
         startLiveEntries();
+        preloadUserColors();
 
     } else {
         currentUser = null;
@@ -160,44 +182,45 @@ Type "help" for a list of usable commands
     }
 });
 
-function print(text, type = "system", color = null) {
 
-    const line = document.createElement("div");
+function print(text = "", type = "system", color = null, options = {}) {
 
-    if (type === "user")
-        line.classList.add("user-line");
+    const { inline = false } = options;
 
-    if (type === "system")
-        line.classList.add("system-line");
+    // If not inline, we start a new line
+    if (!inline || !currentLine) {
+        currentLine = document.createElement("div");
 
-    if (type === "error")
-        line.classList.add("error-line");
+        currentLine.classList.add("line");
 
-    if (type === "display")
-        line.classList.add("display-line");
+        if (type === "user") currentLine.classList.add("user-line");
+        if (type === "system") currentLine.classList.add("system-line");
+        if (type === "error") currentLine.classList.add("error-line");
+        if (type === "display") currentLine.classList.add("display-line");
+        if (type === "message") currentLine.classList.add("message-line");
+        if (type === "matrix") currentLine.classList.add("matrix-line");
 
-    if (type === "message")
-        line.classList.add("message-line");
-
-    if (type === "matrix")
-        line.classList.add("matrix-line");
-
-    if (color) {
-        line.style.color = color;
+        output.appendChild(currentLine);
     }
 
-    line.textContent = text;
+    const span = document.createElement("span");
+    span.textContent = text;
 
-    output.appendChild(line);
+    if (color) {
+        span.style.color = color;
+    }
+
+    currentLine.appendChild(span);
+
     output.scrollTop = output.scrollHeight;
 }
 
-function printChatMessage(user, message, timestamp) {
+async function printChatMessage(user, message, timestamp, mode = "append") {
 
     const line = document.createElement("div");
     line.classList.add("message-line");
 
-    const baseColor = getUserColor(user);
+    const baseColor = await getUserColor(user);
     const nameColor = lightenColor(baseColor, 60);
 
     const username = document.createElement("span");
@@ -227,7 +250,11 @@ function printChatMessage(user, message, timestamp) {
     line.appendChild(username);
     line.appendChild(msg);
 
-    output.appendChild(line);
+    if (mode === "prepend") {
+        output.prepend(line);
+    } else {
+        output.appendChild(line);
+    }
     output.scrollTop = output.scrollHeight;
 }
 
@@ -235,6 +262,7 @@ enterBtn.addEventListener("click", submitCommand);
 
 input.addEventListener("keydown", async (e) => {
 
+    // history tracking (keep yours if you want)
     if (e.key === " ") {
         typedHistory += " ";
     } else if (e.key.length === 1) {
@@ -243,14 +271,25 @@ input.addEventListener("keydown", async (e) => {
 
     localStorage.setItem("typedHistory", typedHistory);
 
-    if (e.key !== "Enter") return;
+    // MOBILE BEHAVIOR
+    // Most mobile keyboards send "Enter" but no shift key
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-    e.preventDefault();
+    if (e.key === "Enter") {
 
-    submitCommand();
+        // DESKTOP: Enter sends, Shift+Enter newline
+        if (!isMobile) {
+            if (e.shiftKey) return; // allow newline
+            e.preventDefault();
+            await submitCommand();
+            return;
+        }
+
+        return;
+    }
 });
 
-function runCommand(command) {
+async function runCommand(command) {
 
     const args = command.split(" ");
     const base = args[0].toLowerCase();
@@ -274,10 +313,12 @@ function runCommand(command) {
             print("  help            Show this help menu", "system");
             print("  clear           Clear the terminal screen", "system");
             print("  whoami          Show current logged-in user", "system");
+            print("  colors          Show example palette colors", "system");
+            print("  setcolor <hex>  Set your display color (e.g. #ffcc00)", "system");
             print("  date            Show current system time", "system");
             print("  logout          Sign out of the system", "system");
-            print("  create          Start guided entry creation wizard", "system");
-            print("           Steps: name → question → answer → content", "system");
+            print("  create          Start guided entry creation", "system");
+            print("  Steps: name → question → answer → content", "system");
 
             print("", "system");
 
@@ -311,6 +352,20 @@ function runCommand(command) {
             return;
         case "whoami":
             print(auth.currentUser.email);
+            break;
+        case "colors":
+            print("=== EXAMPLE COLORS ===", "matrix");
+            print("", "system");
+
+            COLOR_PALETTE.forEach((color, index) => {
+                print(`${index + 1}. ${color}`, "system", color);
+            });
+
+            print("", "system");
+            print("You could also use any color you want,", "system"); 
+            print("by finding its #hex color", "system");
+            print("To Use:", "matrix");
+            print("  setcolor #hex     (custom color)", "system");
             break;
 
         case "date":
@@ -346,11 +401,11 @@ function runCommand(command) {
                 break;
             }
 
-            Object.entries(cachedEntries).forEach(([id, entry], index) => {
+            for (const [id, entry] of Object.entries(cachedEntries)) {
 
                 print("────────────────────────", "system");
 
-                print(`[${index + 1}] ${entry.name || "Unnamed"}`, "matrix");
+                print(`[${entry.name || "Unnamed"}]`, "matrix");
                 print(`Question: ${entry.question || "Missing"}`, "system");
 
                 const date = entry.createdAt
@@ -364,40 +419,52 @@ function runCommand(command) {
                     : "Unknown";
 
                 const creator = entry.createdBy || "Unknown";
+                const creatorId = creator.replace(/[.#$\[\]]/g, "_");
 
-                print(`Created by: ${creator}`, "system");
+                const creatorColor = await getUserColor(creatorId);
+                
+                print("Created by: ", "system");
+                printInline([
+                    { text: creator, color: creatorColor }
+                ]);
+
                 print(`Created: ${date}`, "system");
 
-                // =========================
-                // COMPLETION TAB (NEW)
-                // =========================
-                const completions = cachedCompletions?.[id] || {};
+                const completions = cachedCompletions?.[id];
 
-                const completedUsers = Object.values(completions)
-                    .map(c => c?.user)
-                    .filter(Boolean);
+                if (!completions) {
+                    print("Completed: Nobody yet", "system");
+                } else {
+                    const completedUsers = Object.values(completions)
+                        .map(c => c?.user)
+                        .filter(Boolean);
+                    print("Completed: ");
+                    for (const user of completedUsers) {
+                        const safeId = user.replace(/[.#$\[\]]/g, "_");
+                        const color = await getUserColor(safeId);
 
-                // print(
-                //     `Completed: ${
-                //         completedUsers.length > 0
-                //             ? completedUsers.join(", ")
-                //             : "Nobody yet"
-                //     }`,
-                //     "system"
-                // );
+                        printInline([{ text: (user + " "), color: color }] );
+                    }
+                }
 
                 print("────────────────────────", "system");
                 print("", "system");
-            });
-
+            }   
             break;
         case "attempt":
-            handleAttempt(args.slice(1).join(" "));
+            await handleAttempt(args.slice(1).join(" "));
             break;
+        case "setcolor":
+            await handleSetColor(args.slice(1).join(" "));
+            return;
 
         default:
             print(`Command not found: ${command}`, "error");
     }
+}
+
+function safeKey(str) {
+    return str.replace(/[.#$\[\]]/g, "_");
 }
 
 function startLiveEntries() {
@@ -410,12 +477,31 @@ function startLiveEntries() {
             ? snapshot.val()
             : {};
     });
-
-    onValue(completionsRef, (snapshot) => {
-        cachedCompletions = snapshot.exists()
-            ? snapshot.val()
-            : {};
+    onValue(ref(db, "entryCompletions"), snapshot => {
+        cachedCompletions = snapshot.val() || {};
     });
+}
+
+async function handleSetColor(color) {
+    if (!currentUser) {
+        print("You must be logged in", "error");
+        return;
+    }
+
+    if (!/^#([0-9A-Fa-f]{3}){1,2}$/.test(color)) {
+        print("Invalid color. Use hex like #ffcc00", "error");
+        return;
+    }
+
+    const uid = safeKey(currentUser.email); // IMPORTANT FIX
+
+    await set(ref(db, `userColors/${uid}`), {
+        color
+    });
+
+    userColorCache[uid] = color;
+
+    print(`Color updated → ${color}`, "system");
 }
 
 async function loadChat() {
@@ -423,7 +509,7 @@ async function loadChat() {
     return snap.exists() ? snap.val() : {};
 }
 
-function printChat(chatData) {
+async function printChat(chatData) {
     Object.values(chatData)
         .sort((a, b) => a.timestamp - b.timestamp)
         .forEach(msg => {
@@ -433,6 +519,53 @@ function printChat(chatData) {
                 msg.timestamp
             );
         });
+}
+
+async function getUserColor(userId) {
+    if (!userId) return "#888";
+
+    const safeId = safeKey(userId);
+
+    if (userColorCache[safeId]) {
+        return userColorCache[safeId];
+    }
+
+    const snap = await get(ref(db, `userColors/${safeId}`));
+
+    if (snap.exists() && snap.val()?.color) {
+        const color = snap.val().color;
+        userColorCache[safeId] = color;
+        return color;
+    }
+
+    // fallback deterministic color
+    let hash = 0;
+    for (let i = 0; i < userId.length; i++) {
+        hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+
+    const color = COLOR_PALETTE[Math.abs(hash) % COLOR_PALETTE.length];
+
+    userColorCache[safeId] = color;
+    return color;
+}
+
+async function preloadUserColors() {
+    const snap = await get(ref(db, "userColors"));
+    if (!snap.exists()) return;
+
+    const data = snap.val();
+
+    for (const uid in data) {
+        userColorCache[uid] = data[uid].color;
+    }
+}
+
+function printInline(parts = []) {
+    parts.forEach(p => {
+        print(p.text, "system", p.color, { inline: true });
+    });
+    currentLine = null;
 }
 
 async function handleAttempt(name) {
@@ -473,7 +606,7 @@ function handleCreateFlow(input) {
         return;
     }
 
-    if (input.toLowerCase() === "cancel") {
+    if (input.toLowerCase() === "back") {
         createMode = false;
         createStep = 0;
         createData = {};
@@ -498,7 +631,7 @@ function handleCreateFlow(input) {
     if (createStep === 3) {
         createData.password = input;
         createStep = 4;
-        print("Step 4: Enter content (shown on success)", "system");
+        print("Step 4: Enter reward message (shown on success)", "system");
         return;
     }
 
@@ -509,7 +642,7 @@ function handleCreateFlow(input) {
     }
 }
 
-function submitCommand() {
+async function submitCommand() {
     const command = input.value.trim();
     if (!command) return;
 
@@ -541,7 +674,7 @@ function submitCommand() {
     output.appendChild(line);
     output.scrollTop = output.scrollHeight;
 
-    runCommand(command);
+    await runCommand(command);
 }
 
 async function handleTry(answer) {
@@ -572,11 +705,15 @@ async function handleTry(answer) {
         print("ACCESS GRANTED", "system");
         print(data.content ?? "No content", "message");
 
-        // =========================
-        // SAVE COMPLETION (CLEAN)
-        // =========================
         const userName = currentUser?.email || "guest";
         const safeUserKey = userName.replace(/[.#$\[\]]/g, "_");
+
+        const existing = cachedCompletions?.[activeChallenge.entryId]?.[safeUserKey];
+
+        if (existing) {
+            print("You already completed this entry", "error");
+            return;
+        }
 
         const completionRef = ref(
             db,
@@ -595,26 +732,131 @@ async function handleTry(answer) {
         print("ERROR: " + err.message, "error");
     }
 }
+
 async function enterChatMode() {
+
     chatMode = true;
     output.innerHTML = "";
 
-    print("=== CHAT MODE (LIVE) ===", "matrix");
-    print("Type: send <message>", "matrix");
-    print("Type: back to exit", "matrix");
-    print("", "system");
+    // print("=== CHAT MODE (LIVE) ===", "matrix");
+    // print("Type: send <message>", "matrix");
+    // print("Type: back to exit", "matrix");
+    // print("", "system");
 
-    const chatRef = ref(db, "chatMessages");
+    await loadRecentMessages();
 
-    chatListener = onChildAdded(chatRef, (snap) => {
-        const msg = snap.val();
+    if (chatListener) {
+        chatListener();
+        chatListener = null;
+    }
 
-        printChatMessage(
-            msg.user,
-            msg.message,
-            msg.timestamp
-        );
+    const liveStart = newestLoadedTimestamp || Date.now();
+
+    const liveRef = query(
+        ref(db, "chatMessages"),
+        orderByChild("timestamp"),
+        startAt(liveStart + 1)
+    );
+
+    chatListener = onChildAdded(
+        liveRef,
+        snap => {
+
+            const msg = snap.val();
+
+            if (!msg) return;
+
+            printChatMessage(
+                msg.user,
+                msg.message,
+                msg.timestamp
+            );
+
+        }
+    );
+
+    setupInfiniteScroll();
+}
+
+async function loadRecentMessages() {
+    const q = query(
+        ref(db, "chatMessages"),
+        orderByChild("timestamp"),
+        limitToLast(CHAT_PAGE_SIZE)
+    );
+
+    const snap = await get(q);
+
+    const bad = [];
+
+    Object.entries(snap.val()).forEach(([id, msg]) => {
+        if (typeof msg.timestamp !== "number") {
+            bad.push({ id, msg });
+        }
     });
+
+    if (!snap.exists()) return;
+
+    const messages = Object.values(snap.val())
+        .sort((a,b)=>a.timestamp-b.timestamp);
+
+    for (const msg of messages) {
+        await printChatMessage(msg.user, msg.message, msg.timestamp);
+    }
+
+    oldestLoadedTimestamp = messages[0].timestamp;
+
+    newestLoadedTimestamp =
+        messages[messages.length-1].timestamp;
+
+    output.scrollTop =
+        output.scrollHeight;
+}
+
+async function loadOlderMessages() {
+
+    if (loadingOlder) return;
+    loadingOlder = true;
+
+    const previousHeight = output.scrollHeight;
+
+    const q = query(
+        ref(db, "chatMessages"),
+        orderByChild("timestamp"),
+        endBefore(oldestLoadedTimestamp),
+        limitToLast(CHAT_PAGE_SIZE)
+    );
+
+    const snap = await get(q);
+
+    if (!snap.exists()) {
+        loadingOlder = false;
+        return;
+    }
+
+    const messages = Object.values(snap.val())
+        .sort((a, b) => a.timestamp - b.timestamp);
+
+    // update oldest timestamp
+    oldestLoadedTimestamp = messages[0].timestamp;
+
+    // render older messages at the TOP
+    for (const msg of messages) {
+        await printChatMessage(msg.user, msg.message, msg.timestamp, "prepend");
+    }
+
+    // keep scroll position stable
+    output.scrollTop = output.scrollHeight - previousHeight;
+
+    loadingOlder = false;
+}
+
+function setupInfiniteScroll() {
+    output.onscroll = () => {
+        if(output.scrollTop<=20){
+            loadOlderMessages();
+        }
+    };
 }
 
 async function handleSend(message) {
@@ -716,17 +958,7 @@ async function registerFCM() {
         print("FCM FAILED: " + err.message, "error");
     }
 }
-            
-
-function getUserColor(userId) {
-    const currentEmail = currentUser?.email || "";
-
-    if (userId === currentEmail) {
-        return "#11af11";
-    }
-
-    return "#6099ee";
-}
+        
 
 function lightenColor(hex, amount = 40) {
     hex = hex.replace("#", "");
@@ -790,16 +1022,19 @@ async function finishCreate() {
 }
 
 function exitChatMode() {
+
     chatMode = false;
 
-    if (chatListener) {
+    if(chatListener){
         chatListener();
-        chatListener = null;
+        chatListener=null;
     }
 
-    output.innerHTML = "";
+    output.onscroll=null;
 
-    print("Exited chat mode", "system");
+    output.innerHTML="";
+
+    print("Exited chat mode","system");
     print("Type 'help' for commands", "matrix");
 }
 
