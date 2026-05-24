@@ -46,6 +46,7 @@ let createMode = false;
 let createStep = 0;
 let createData = {};
 let currentUser = null;
+let cachedCompletions = {};
 
 
 const enterBtn= 
@@ -159,42 +160,74 @@ Type "help" for a list of usable commands
     }
 });
 
-
-function print(text, type = "system") {
+function print(text, type = "system", color = null) {
 
     const line = document.createElement("div");
 
-    if (type === "user") {
+    if (type === "user")
         line.classList.add("user-line");
-    }
 
-    if (type === "system") {
+    if (type === "system")
         line.classList.add("system-line");
-    }
 
-    if (type === "error") {
+    if (type === "error")
         line.classList.add("error-line");
-    }
 
-    if (type == "display")
-    {
-        line.classList.add("display-line")
-    }
+    if (type === "display")
+        line.classList.add("display-line");
 
-    if (type == "message")
-    {
-        line.classList.add("message-line")
-    }
+    if (type === "message")
+        line.classList.add("message-line");
 
-    if (type == "matrix")
-    {
-        line.classList.add("matrix-line")
+    if (type === "matrix")
+        line.classList.add("matrix-line");
+
+    if (color) {
+        line.style.color = color;
     }
 
     line.textContent = text;
 
     output.appendChild(line);
+    output.scrollTop = output.scrollHeight;
+}
 
+function printChatMessage(user, message, timestamp) {
+
+    const line = document.createElement("div");
+    line.classList.add("message-line");
+
+    const baseColor = getUserColor(user);
+    const nameColor = lightenColor(baseColor, 60);
+
+    const username = document.createElement("span");
+    username.textContent = `${user}: `;
+    username.style.color = nameColor;
+
+    const msg = document.createElement("span");
+    msg.textContent = message;
+    msg.style.color = baseColor;
+
+    const time = document.createElement("span");
+
+    const date = new Date(timestamp);
+
+    const formattedDateTime = date.toLocaleString([], {
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+
+    time.textContent = `[${formattedDateTime}] `;
+    time.style.color = "#777";
+    time.style.fontSize = "0.85em";
+
+    line.appendChild(time);
+    line.appendChild(username);
+    line.appendChild(msg);
+
+    output.appendChild(line);
     output.scrollTop = output.scrollHeight;
 }
 
@@ -243,6 +276,8 @@ function runCommand(command) {
             print("  whoami          Show current logged-in user", "system");
             print("  date            Show current system time", "system");
             print("  logout          Sign out of the system", "system");
+            print("  create          Start guided entry creation wizard", "system");
+            print("           Steps: name → question → answer → content", "system");
 
             print("", "system");
 
@@ -272,11 +307,6 @@ function runCommand(command) {
             output.innerHTML = "";
             break;
         case "create":
-            if (!isAdmin()) {
-                print("ACCESS DENIED — admin only command", "error");
-                return;
-            }
-
             startCreateFlow();
             return;
         case "whoami":
@@ -324,17 +354,43 @@ function runCommand(command) {
                 print(`Question: ${entry.question || "Missing"}`, "system");
 
                 const date = entry.createdAt
-                    ? new Date(entry.createdAt).toLocaleString()
+                    ? new Date(entry.createdAt).toLocaleString([], {
+                        month: "2-digit",
+                        day: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit"
+                    })
                     : "Unknown";
 
+                const creator = entry.createdBy || "Unknown";
+
+                print(`Created by: ${creator}`, "system");
                 print(`Created: ${date}`, "system");
+
+                // =========================
+                // COMPLETION TAB (NEW)
+                // =========================
+                const completions = cachedCompletions?.[id] || {};
+
+                const completedUsers = Object.values(completions)
+                    .map(c => c?.user)
+                    .filter(Boolean);
+
+                // print(
+                //     `Completed: ${
+                //         completedUsers.length > 0
+                //             ? completedUsers.join(", ")
+                //             : "Nobody yet"
+                //     }`,
+                //     "system"
+                // );
 
                 print("────────────────────────", "system");
                 print("", "system");
             });
 
             break;
-
         case "attempt":
             handleAttempt(args.slice(1).join(" "));
             break;
@@ -347,14 +403,18 @@ function runCommand(command) {
 function startLiveEntries() {
 
     const entriesRef = ref(db, "entries");
+    const completionsRef = ref(db, "entryCompletions");
 
     onValue(entriesRef, (snapshot) => {
+        cachedEntries = snapshot.exists()
+            ? snapshot.val()
+            : {};
+    });
 
-        cachedEntries = snapshot.exists() ? snapshot.val() : {};
-
-    }, (error) => {
-        console.error(error);
-        print("Failed to sync entries", "error");
+    onValue(completionsRef, (snapshot) => {
+        cachedCompletions = snapshot.exists()
+            ? snapshot.val()
+            : {};
     });
 }
 
@@ -367,7 +427,11 @@ function printChat(chatData) {
     Object.values(chatData)
         .sort((a, b) => a.timestamp - b.timestamp)
         .forEach(msg => {
-            print(`${msg.user}: ${msg.message}`, "message");
+            printChatMessage(
+                msg.user,
+                msg.message,
+                msg.timestamp
+            );
         });
 }
 
@@ -500,8 +564,6 @@ async function handleTry(answer) {
 
         const data = result.data;
 
-        console.log("FUNCTION RESULT:", data);
-
         if (!data.success) {
             print(data.message, "error");
             return;
@@ -510,6 +572,22 @@ async function handleTry(answer) {
         print("ACCESS GRANTED", "system");
         print(data.content ?? "No content", "message");
 
+        // =========================
+        // SAVE COMPLETION (CLEAN)
+        // =========================
+        const userName = currentUser?.email || "guest";
+        const safeUserKey = userName.replace(/[.#$\[\]]/g, "_");
+
+        const completionRef = ref(
+            db,
+            `entryCompletions/${activeChallenge.entryId}/${safeUserKey}`
+        );
+
+        await set(completionRef, {
+            user: userName,
+            completedAt: Date.now()
+        });
+
         activeChallenge = null;
 
     } catch (err) {
@@ -517,7 +595,6 @@ async function handleTry(answer) {
         print("ERROR: " + err.message, "error");
     }
 }
-
 async function enterChatMode() {
     chatMode = true;
     output.innerHTML = "";
@@ -531,7 +608,12 @@ async function enterChatMode() {
 
     chatListener = onChildAdded(chatRef, (snap) => {
         const msg = snap.val();
-        print(`${msg.user}: ${msg.message}`, "message");
+
+        printChatMessage(
+            msg.user,
+            msg.message,
+            msg.timestamp
+        );
     });
 }
 
@@ -635,6 +717,30 @@ async function registerFCM() {
     }
 }
             
+
+function getUserColor(userId) {
+    const currentEmail = currentUser?.email || "";
+
+    if (userId === currentEmail) {
+        return "#11af11";
+    }
+
+    return "#6099ee";
+}
+
+function lightenColor(hex, amount = 40) {
+    hex = hex.replace("#", "");
+
+    let r = parseInt(hex.substring(0,2),16);
+    let g = parseInt(hex.substring(2,4),16);
+    let b = parseInt(hex.substring(4,6),16);
+
+    r = Math.min(255, r + amount);
+    g = Math.min(255, g + amount);
+    b = Math.min(255, b + amount);
+
+    return `rgb(${r},${g},${b})`;
+}
    
 
 function startCreateFlow() {
@@ -662,7 +768,8 @@ async function finishCreate() {
             name: createData.name,
             question: createData.question,
             type: "text",
-            createdAt: Date.now()
+            createdAt: Date.now(),
+            createdBy: currentUser?.email || "unknown"
         });
 
         await set(ref(db, "entrySecrets/" + id), {
