@@ -69,6 +69,27 @@ const COLOR_PALETTE = [
 ];
 let userColorCache = {};
 let currentLine = null;
+let visualVH = window.innerHeight * 0.01;
+
+function updateViewportHeight() {
+    visualVH = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${visualVH}px`);
+}
+
+updateViewportHeight();
+window.addEventListener('resize', updateViewportHeight);
+
+let lastHeight = window.innerHeight;
+
+window.addEventListener("resize", () => {
+    const diff = lastHeight - window.innerHeight;
+
+    const keyboardOpen = diff > 120; // threshold for mobile keyboard
+
+    document.body.classList.toggle("keyboard-open", keyboardOpen);
+
+    lastHeight = window.innerHeight;
+});
 
 const enterBtn= 
 document.getElementById("enterBtn");
@@ -212,7 +233,7 @@ function print(text = "", type = "system", color = null, options = {}) {
 
     currentLine.appendChild(span);
 
-    output.scrollTop = output.scrollHeight;
+    scrollToBottom();
 }
 
 async function printChatMessage(user, message, timestamp, mode = "append") {
@@ -255,7 +276,7 @@ async function printChatMessage(user, message, timestamp, mode = "append") {
     } else {
         output.appendChild(line);
     }
-    output.scrollTop = output.scrollHeight;
+    scrollToBottom();
 }
 
 enterBtn.addEventListener("click", submitCommand);
@@ -482,6 +503,12 @@ function startLiveEntries() {
     });
 }
 
+function scrollToBottom() {
+    requestAnimationFrame(() => {
+        scrollToBottom();
+    });
+}
+
 async function handleSetColor(color) {
     if (!currentUser) {
         print("You must be logged in", "error");
@@ -672,7 +699,7 @@ async function submitCommand() {
     line.appendChild(cmd);
 
     output.appendChild(line);
-    output.scrollTop = output.scrollHeight;
+    scrollToBottom();
 
     await runCommand(command);
 }
@@ -809,8 +836,7 @@ async function loadRecentMessages() {
     newestLoadedTimestamp =
         messages[messages.length-1].timestamp;
 
-    output.scrollTop =
-        output.scrollHeight;
+    scrollToBottom();
 }
 
 async function loadOlderMessages() {
