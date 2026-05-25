@@ -248,6 +248,17 @@ body.logged-in #matrix {
     line-height: 1.4;
 }
 
+body.keyboard-open .inputRow {
+    transform: translateY(
+        calc(-1 * var(--keyboard-height))
+    );
+}
+
+body.keyboard-open #terminalOutput {
+    padding-bottom:
+        calc(var(--keyboard-height) + 15px);
+}
+
 .inputRow {
     display: flex;
     align-items: center;

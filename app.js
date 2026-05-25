@@ -70,22 +70,37 @@ const COLOR_PALETTE = [
 let userColorCache = {};
 let currentLine = null;
 function updateViewport() {
-    const h = window.visualViewport?.height || window.innerHeight;
-    document.documentElement.style.setProperty('--app-height', `${h}px`);
+    // Keep app height stable
+    document.documentElement.style.setProperty(
+        "--app-height",
+        `${window.innerHeight}px`
+    );
 }
 
-window.visualViewport?.addEventListener("resize", updateViewport);
 window.addEventListener("resize", updateViewport);
+window.addEventListener("orientationchange", updateViewport);
+
 updateViewport();
 
-let lastHeight = window.innerHeight;
-
 if (window.visualViewport) {
-    window.visualViewport.addEventListener("resize", () => {
-        const keyboardOpen =
-            window.visualViewport.height < window.innerHeight * 0.75;
 
-        document.body.classList.toggle("keyboard-open", keyboardOpen);
+    window.visualViewport.addEventListener("resize", () => {
+
+        const keyboardHeight =
+            window.innerHeight - window.visualViewport.height;
+
+        const keyboardOpen = keyboardHeight > 150;
+
+        document.body.classList.toggle(
+            "keyboard-open",
+            keyboardOpen
+        );
+
+        document.documentElement.style.setProperty(
+            "--keyboard-height",
+            `${Math.max(0, keyboardHeight)}px`
+        );
+
     });
 }
 const enterBtn= 
