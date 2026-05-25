@@ -4,7 +4,6 @@ html, body {
     margin: 0;
     overflow: hidden !important;
     overscroll-behavior: none;
-    position: fixed;
     width: 100%;
 }
 
@@ -15,7 +14,6 @@ body {
     font-family: monospace;
     overflow: hidden;
     height: var(--app-height);
-    position: fixed;
     width: 100%;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;

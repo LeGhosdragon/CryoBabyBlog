@@ -88,13 +88,6 @@ if (window.visualViewport) {
         document.body.classList.toggle("keyboard-open", keyboardOpen);
     });
 }
-function forceLayoutFix() {
-    requestAnimationFrame(() => {
-        output.scrollTop = output.scrollHeight;
-        window.dispatchEvent(new Event("resize"));
-    });
-}
-
 const enterBtn= 
 document.getElementById("enterBtn");
 
@@ -177,7 +170,6 @@ onAuthStateChanged(auth, async (user) => {
 
         loginContainer.style.display = "none";
         terminalContainer.style.display = "block";
-        forceLayoutFix();
         const name = user.email
             ? user.email.split("@")[0]
             : "user";
@@ -775,7 +767,6 @@ async function enterChatMode() {
     // print("", "system");
 
     await loadRecentMessages();
-    forceLayoutFix();
 
     if (chatListener) {
         chatListener();
