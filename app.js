@@ -49,6 +49,8 @@ let firebaseSWRegistration = null;
 const ADMIN_EMAILS = [
     "adminuser@me.ca"
 ];
+let isNearBottom = true;
+const SCROLL_THRESHOLD = 120; // px from bottom
 const CHAT_PAGE_SIZE = 50;
 let oldestLoadedTimestamp = null;
 let newestLoadedTimestamp = null;
@@ -103,6 +105,8 @@ if (window.visualViewport) {
 
     });
 }
+
+
 const enterBtn= 
 document.getElementById("enterBtn");
 
@@ -164,7 +168,7 @@ window.addEventListener("load", () => {
 function keepInputFocused() {
     input.focus();
 }
-
+output.addEventListener("scroll", updateScrollState);
 loginBtn.onclick = async () => {
     try {
         await signInWithEmailAndPassword(auth, email.value, password.value);
@@ -284,9 +288,9 @@ async function printChatMessage(user, message, timestamp, mode = "append") {
 
     if (mode === "prepend") {
         output.prepend(line);
-
     } else {
         output.appendChild(line);
+        scrollToBottom();
     }
 }
 
@@ -515,6 +519,8 @@ function startLiveEntries() {
 }
 
 function scrollToBottom() {
+        if (!isNearBottom) return;
+
     requestAnimationFrame(() => {
         output.scrollTop = output.scrollHeight;
     });
@@ -540,6 +546,13 @@ async function handleSetColor(color) {
     userColorCache[uid] = color;
 
     print(`Color updated → ${color}`, "system");
+}
+
+function updateScrollState() {
+    const distanceFromBottom =
+        output.scrollHeight - output.scrollTop - output.clientHeight;
+
+    isNearBottom = distanceFromBottom < SCROLL_THRESHOLD;
 }
 
 async function loadChat() {
