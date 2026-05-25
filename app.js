@@ -169,7 +169,7 @@ onAuthStateChanged(auth, async (user) => {
         document.body.classList.add("logged-in");
 
         loginContainer.style.display = "none";
-        terminalContainer.style.display = "block";
+        terminalContainer.style.display = "flex";
         const name = user.email
             ? user.email.split("@")[0]
             : "user";

@@ -55,12 +55,6 @@ body.logged-in #matrix {
              env(safe-area-inset-left);
 }
 
-body.keyboard-open #terminalOutput {
-    padding-bottom: calc(var(--keyboard-height, 0px) + 20px);
-}
-body.keyboard-open .inputRow {
-    transform: translateY(calc(-1 * env(keyboard-inset-height, 0px)));
-}
 
 #loginContainer {
     position: relative;
@@ -72,29 +66,7 @@ body.keyboard-open .inputRow {
     justify-content: center;
 }
 
-#terminalContainer {
-    display: flex;
-    flex-direction: column;
-    height: var(--app-height);
-    padding: 20px;
-    box-sizing: border-box;
-}
 
-#terminalOutput {
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior: contain;
-    white-space: pre-wrap;
-    color: var(--system);
-    line-height: 1.4;
-}
-
-.inputRow {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    margin-top: 10px;
-}
 
 *{
     -webkit-text-size-adjust: 100%;
@@ -153,25 +125,6 @@ body.keyboard-open .inputRow {
     gap: 14px;
 }
 
-#terminalContainer {
-    position: relative;
-    z-index: 10;
-    display: none;
-    height: var(--app-height);
-
-    padding: 20px;
-    box-sizing: border-box;
-}
-
-#terminalOutput {
-    height: calc(100% - 60px);
-    overflow-y: auto;
-    overflow-x: hidden;
-
-    white-space: pre-wrap;
-    color: var(--system);
-    line-height: 1.4;
-}
 
 .prompt {
     margin-right: 8px;
@@ -265,6 +218,44 @@ body.keyboard-open .inputRow {
     white-space: pre-wrap;
 }
 
+#terminalContainer {
+    position: relative;
+    z-index: 10;
+
+    display: flex;
+    flex-direction: column;
+
+    height: var(--app-height);
+    padding: 20px;
+    box-sizing: border-box;
+    padding:
+        env(safe-area-inset-top)
+        20px
+        env(safe-area-inset-bottom)
+        20px;
+    overflow: hidden;
+}
+
+#terminalOutput {
+    flex: 1 1 auto;
+    min-height: 0;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    white-space: pre-wrap;
+    color: var(--system);
+    line-height: 1.4;
+}
+
+.inputRow {
+    display: flex;
+    align-items: center;
+
+    flex: 0 0 auto;
+    margin-top: 10px;
+}
+
 @media (max-width: 768px) {
 
     body {
@@ -283,10 +274,6 @@ body.keyboard-open .inputRow {
         padding: 20px;
     }
 
-    #terminalOutput {
-        height: calc(100dvh - 70px);
-    }
-
     .prompt {
         max-width: 35%;
         font-size: 12px;
@@ -300,13 +287,6 @@ body.keyboard-open .inputRow {
 
 input, button {
     font-size: 16px;
-}
-
-@supports (padding: env(safe-area-inset-top)) {
-    body {
-        padding-top: env(safe-area-inset-top);
-        padding-bottom: env(safe-area-inset-bottom);
-    }
 }
 
 
