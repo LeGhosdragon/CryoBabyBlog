@@ -69,27 +69,31 @@ const COLOR_PALETTE = [
 ];
 let userColorCache = {};
 let currentLine = null;
-let visualVH = window.innerHeight * 0.01;
-
-function updateViewportHeight() {
-    visualVH = window.innerHeight * 0.01;
-    document.documentElement.style.setProperty('--vh', `${visualVH}px`);
+function updateViewport() {
+    const h = window.visualViewport?.height || window.innerHeight;
+    document.documentElement.style.setProperty('--app-height', `${h}px`);
 }
 
-updateViewportHeight();
-window.addEventListener('resize', updateViewportHeight);
+window.visualViewport?.addEventListener("resize", updateViewport);
+window.addEventListener("resize", updateViewport);
+updateViewport();
 
 let lastHeight = window.innerHeight;
 
-window.addEventListener("resize", () => {
-    const diff = lastHeight - window.innerHeight;
+if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", () => {
+        const keyboardOpen =
+            window.visualViewport.height < window.innerHeight * 0.75;
 
-    const keyboardOpen = diff > 120; // threshold for mobile keyboard
-
-    document.body.classList.toggle("keyboard-open", keyboardOpen);
-
-    lastHeight = window.innerHeight;
-});
+        document.body.classList.toggle("keyboard-open", keyboardOpen);
+    });
+}
+function forceLayoutFix() {
+    requestAnimationFrame(() => {
+        output.scrollTop = output.scrollHeight;
+        window.dispatchEvent(new Event("resize"));
+    });
+}
 
 const enterBtn= 
 document.getElementById("enterBtn");
@@ -173,7 +177,7 @@ onAuthStateChanged(auth, async (user) => {
 
         loginContainer.style.display = "none";
         terminalContainer.style.display = "block";
-
+        forceLayoutFix();
         const name = user.email
             ? user.email.split("@")[0]
             : "user";
@@ -273,10 +277,10 @@ async function printChatMessage(user, message, timestamp, mode = "append") {
 
     if (mode === "prepend") {
         output.prepend(line);
+
     } else {
         output.appendChild(line);
     }
-    scrollToBottom();
 }
 
 enterBtn.addEventListener("click", submitCommand);
@@ -505,7 +509,7 @@ function startLiveEntries() {
 
 function scrollToBottom() {
     requestAnimationFrame(() => {
-        scrollToBottom();
+        output.scrollTop = output.scrollHeight;
     });
 }
 
@@ -771,6 +775,7 @@ async function enterChatMode() {
     // print("", "system");
 
     await loadRecentMessages();
+    forceLayoutFix();
 
     if (chatListener) {
         chatListener();

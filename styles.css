@@ -1,7 +1,11 @@
 html, body {
     height: 100%;
-    overflow: hidden;
     -webkit-text-size-adjust: 100%;
+    margin: 0;
+    overflow: hidden !important;
+    overscroll-behavior: none;
+    position: fixed;
+    width: 100%;
 }
 
 body {
@@ -10,8 +14,9 @@ body {
     color: #00ff9d;
     font-family: monospace;
     overflow: hidden;
-    height: calc(var(--vh, 1vh) * 100);
-
+    height: var(--app-height);
+    position: fixed;
+    width: 100%;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
 }
@@ -55,31 +60,32 @@ body.logged-in #matrix {
 body.keyboard-open #terminalOutput {
     padding-bottom: calc(var(--keyboard-height, 0px) + 20px);
 }
+body.keyboard-open .inputRow {
+    transform: translateY(calc(-1 * env(keyboard-inset-height, 0px)));
+}
 
 #loginContainer {
     position: relative;
     z-index: 10;
     display: none;
-    height: calc(var(--vh, 1vh) * 100);
+    height: var(--app-height);
 
     align-items: center;
     justify-content: center;
 }
 
 #terminalContainer {
-    position: relative;
-    z-index: 10;
-    display: none;
-    height: calc(var(--vh, 1vh) * 100);
+    display: flex;
+    flex-direction: column;
+    height: var(--app-height);
     padding: 20px;
     box-sizing: border-box;
 }
 
 #terminalOutput {
-    height: calc(100% - 60px);
     overflow-y: auto;
     overflow-x: hidden;
-
+    overscroll-behavior: contain;
     white-space: pre-wrap;
     color: var(--system);
     line-height: 1.4;
@@ -88,11 +94,8 @@ body.keyboard-open #terminalOutput {
 .inputRow {
     display: flex;
     align-items: center;
-    width: 100%;
-    position: sticky;
-    z-index: 100;
-    padding-bottom: env(safe-area-inset-bottom);
-    bottom: 0;
+    flex-shrink: 0;
+    margin-top: 10px;
 }
 
 *{
@@ -133,7 +136,7 @@ body.keyboard-open #terminalOutput {
     display: none;
 
     height: 100vh;
-    height: calc(var(--vh, 1vh) * 100);
+    height: var(--app-height);
 
     align-items: center;
     justify-content: center;
@@ -156,7 +159,7 @@ body.keyboard-open #terminalOutput {
     position: relative;
     z-index: 10;
     display: none;
-    height: calc(var(--vh, 1vh) * 100);
+    height: var(--app-height);
 
     padding: 20px;
     box-sizing: border-box;
@@ -267,13 +270,13 @@ body.keyboard-open #terminalOutput {
 @media (max-width: 768px) {
 
     body {
-        height: calc(var(--vh, 1vh) * 100);
+        height: var(--app-height);
         overflow: hidden;
     }
 
     #loginContainer,
     #terminalContainer {
-        height: calc(var(--vh, 1vh) * 100);
+        height: var(--app-height);
         padding: 12px;
         box-sizing: border-box;
     }
